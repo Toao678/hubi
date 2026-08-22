@@ -1,41 +1,31 @@
-const http = require('http');
-const url = require('url');
-
-const server = http.createServer(async (req, res) => {
-    // 跨域
+module.exports = async function(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
     if (req.method === 'OPTIONS') {
-        res.statusCode = 200;
-        res.end();
-        return;
+        return res.status(200).end();
     }
 
-    const parsedUrl = url.parse(req.url, true);
-    const path = parsedUrl.pathname;
-
-    // webhook
-    if (path === '/webhook') {
-        console.log('📩 收到 webhook 请求');
-        res.statusCode = 200;
-        res.end(JSON.stringify({ ok: true, message: 'webhook received' }));
-        return;
+    if (req.method === 'GET' && req.url === '/webhook') {
+        return res.status(200).json({ ok: true, message: 'webhook ok' });
     }
 
-    // 根路径
-    if (path === '/') {
-        res.statusCode = 200;
-        res.end(JSON.stringify({ message: 'OK' }));
-        return;
+    if (req.method === 'POST' && req.url === '/webhook') {
+        try {
+            const body = req.body;
+            console.log('收到 webhook:', body);
+            return res.status(200).json({ ok: true });
+        } catch (e) {
+            return res.status(500).json({ error: 'webhook error' });
+        }
     }
 
-    res.statusCode = 404;
-    res.end(JSON.stringify({ error: 'Not found' }));
-});
+    if (req.method === 'POST' && req.url === '/api/proxy') {
+        const { code, deviceId } = req.body || {};
+        if (!code) return res.status(400).json({ error: '缺少激活码' });
+        return res.status(200).json({ success: true });
+    }
 
-const PORT = process.env.PORT || 8080;
-server.listen(PORT, '0.0.0.0', () => {
-    console.log(`✅ 服务已启动，端口: ${PORT}`);
-});
+    return res.status(404).json({ error: 'Not found' });
+};
