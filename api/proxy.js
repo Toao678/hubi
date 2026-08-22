@@ -5,7 +5,7 @@
 const http = require('http');
 const url = require('url');
 
-const BOT_TOKEN = '8253308498:AAGgSgW4q75Y_nqrqX-JxMY0y6e2mVkJpcY';
+const BOT_TOKEN = '8253308498:AAFyC4UiDPpFKvQ6NxfSejxiOGuBxtuk4o0';
 const ADMIN_ID = '6834845606';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
