@@ -8,7 +8,9 @@ const ADMIN_ID = '6834845606';
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
+// ============================================================
 // 生成随机激活码
+// ============================================================
 function generateCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
@@ -18,7 +20,9 @@ function generateCode() {
     return code;
 }
 
+// ============================================================
 // Supabase 数据库操作
+// ============================================================
 async function supabaseQuery(endpoint, options = {}) {
     const url = `${SUPABASE_URL}/rest/v1/${endpoint}`;
     const headers = {
@@ -71,7 +75,9 @@ async function markCodeUsed(code, deviceId) {
     return res.status === 200;
 }
 
+// ============================================================
 // 处理 TG 命令
+// ============================================================
 async function handleTGCommand(text, chatId) {
     if (String(chatId) !== ADMIN_ID) {
         return '⛔ 你没有权限使用此机器人';
@@ -119,7 +125,9 @@ async function handleTGCommand(text, chatId) {
     return `📋 命令: /new /list /del /stats`;
 }
 
+// ============================================================
 // 验证激活码（网站调用）
+// ============================================================
 async function verifyCode(code, deviceId) {
     const record = await getCodeFromDB(code);
     if (!record) return { success: false, error: '无效的激活码' };
@@ -128,8 +136,11 @@ async function verifyCode(code, deviceId) {
     return { success: true };
 }
 
+// ============================================================
 // 主处理函数
+// ============================================================
 module.exports = async function(req, res) {
+    // 跨域设置
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -138,7 +149,9 @@ module.exports = async function(req, res) {
         return res.status(200).end();
     }
 
-    // TG Webhook
+    // ============================================================
+    // TG Webhook（接收 TG 命令）
+    // ============================================================
     if (req.method === 'POST' && req.url === '/webhook') {
         try {
             const body = req.body;
@@ -156,16 +169,18 @@ module.exports = async function(req, res) {
         }
     }
 
+    // ============================================================
     // 网站验证
+    // ============================================================
     if (req.method === 'POST' && req.url === '/api/proxy') {
-        const { code, deviceId } = req.body || {};
-        if (!code) {
+        const body = req.body;
+        if (!body || !body.code) {
             return res.status(400).json({ error: '缺少激活码' });
         }
-        const result = await verifyCode(code, deviceId);
+        const result = await verifyCode(body.code, body.deviceId);
         if (result.success) {
             try {
-                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${ADMIN_ID}&text=${encodeURIComponent('✅ 激活码已使用: ' + code)}`, {
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${ADMIN_ID}&text=${encodeURIComponent('✅ 激活码已使用: ' + body.code)}`, {
                     method: 'GET'
                 });
             } catch (e) {}
