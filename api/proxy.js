@@ -129,9 +129,9 @@ async function verifyCode(code, deviceId) {
 }
 
 // ============================================================
-// 主处理函数（使用 export default）
+// 主处理函数
 // ============================================================
-export default async function handler(req, res) {
+module.exports = async function(req, res) {
     // 跨域设置
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -177,4 +177,4 @@ export default async function handler(req, res) {
     }
 
     return res.status(404).json({ error: 'Not found' });
-}
+};
