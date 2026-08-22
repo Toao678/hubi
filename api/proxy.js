@@ -8,9 +8,7 @@ const ADMIN_ID = '6834845606';
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
-// ============================================================
 // 生成随机激活码
-// ============================================================
 function generateCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
@@ -20,9 +18,7 @@ function generateCode() {
     return code;
 }
 
-// ============================================================
 // Supabase 数据库操作
-// ============================================================
 async function supabaseQuery(endpoint, options = {}) {
     const url = `${SUPABASE_URL}/rest/v1/${endpoint}`;
     const headers = {
@@ -75,9 +71,7 @@ async function markCodeUsed(code, deviceId) {
     return res.status === 200;
 }
 
-// ============================================================
 // 处理 TG 命令
-// ============================================================
 async function handleTGCommand(text, chatId) {
     if (String(chatId) !== ADMIN_ID) {
         return '⛔ 你没有权限使用此机器人';
@@ -125,9 +119,7 @@ async function handleTGCommand(text, chatId) {
     return `📋 命令: /new /list /del /stats`;
 }
 
-// ============================================================
 // 验证激活码（网站调用）
-// ============================================================
 async function verifyCode(code, deviceId) {
     const record = await getCodeFromDB(code);
     if (!record) return { success: false, error: '无效的激活码' };
@@ -137,9 +129,9 @@ async function verifyCode(code, deviceId) {
 }
 
 // ============================================================
-// 主处理函数
+// 主处理函数（使用 export default）
 // ============================================================
-module.exports = async function(req, res) {
+export default async function handler(req, res) {
     // 跨域设置
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -149,9 +141,7 @@ module.exports = async function(req, res) {
         return res.status(200).end();
     }
 
-    // ============================================================
-    // TG Webhook（接收 TG 命令）
-    // ============================================================
+    // TG Webhook
     if (req.method === 'POST' && req.url === '/webhook') {
         try {
             const body = req.body;
@@ -169,9 +159,7 @@ module.exports = async function(req, res) {
         }
     }
 
-    // ============================================================
     // 网站验证
-    // ============================================================
     if (req.method === 'POST' && req.url === '/api/proxy') {
         const body = req.body;
         if (!body || !body.code) {
@@ -189,4 +177,4 @@ module.exports = async function(req, res) {
     }
 
     return res.status(404).json({ error: 'Not found' });
-};
+}
