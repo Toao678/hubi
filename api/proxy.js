@@ -1,7 +1,7 @@
 const http = require('http');
 const url = require('url');
 
-module.exports = async function(req, res) {
+const server = http.createServer(async (req, res) => {
     // 跨域
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -13,7 +13,6 @@ module.exports = async function(req, res) {
         return;
     }
 
-    // 解析路径
     const parsedUrl = url.parse(req.url, true);
     const path = parsedUrl.pathname;
 
@@ -34,4 +33,9 @@ module.exports = async function(req, res) {
 
     res.statusCode = 404;
     res.end(JSON.stringify({ error: 'Not found' }));
-};
+});
+
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`✅ 服务已启动，端口: ${PORT}`);
+});
