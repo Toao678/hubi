@@ -1,19 +1,14 @@
 // ============================================================
 // Toao 激活码管理系统 - Supabase 数据库版
-// 支持 TG 命令：/new、/list、/del、/stats
-// 数据永久保存在 Supabase 数据库
 // ============================================================
 
 const BOT_TOKEN = '8253308498:AAF1gw_90Ez9q7Pow46K7IZsnzHiGiXQhYA';
 const ADMIN_ID = '6834845606';
 
-// Supabase 配置（从环境变量读取）
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
-// ============================================================
 // 生成随机激活码
-// ============================================================
 function generateCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
@@ -23,9 +18,7 @@ function generateCode() {
     return code;
 }
 
-// ============================================================
 // Supabase 数据库操作
-// ============================================================
 async function supabaseQuery(endpoint, options = {}) {
     const url = `${SUPABASE_URL}/rest/v1/${endpoint}`;
     const headers = {
@@ -78,9 +71,7 @@ async function markCodeUsed(code, deviceId) {
     return res.status === 200;
 }
 
-// ============================================================
 // 处理 TG 命令
-// ============================================================
 async function handleTGCommand(text, chatId) {
     if (String(chatId) !== ADMIN_ID) {
         return '⛔ 你没有权限使用此机器人';
@@ -89,10 +80,8 @@ async function handleTGCommand(text, chatId) {
     const parts = text.trim().split(' ');
     const cmd = parts[0].toLowerCase();
 
-    // /new - 生成新激活码
     if (cmd === '/new') {
         let newCode = generateCode();
-        // 防止重复
         let existing = await getCodeFromDB(newCode);
         while (existing) {
             newCode = generateCode();
@@ -100,71 +89,46 @@ async function handleTGCommand(text, chatId) {
         }
         await addCodeToDB(newCode);
         const allCodes = await getAllCodesFromDB();
-        return `✅ 新激活码已生成并保存到数据库\n\n📌 激活码: ${newCode}\n📊 状态: 未使用\n📦 当前总数: ${allCodes.length} 个`;
+        return `✅ 新激活码已生成\n\n📌 激活码: ${newCode}\n📦 总数: ${allCodes.length} 个`;
     }
 
-    // /list - 查看所有激活码
     if (cmd === '/list') {
         const codes = await getAllCodesFromDB();
-        if (codes.length === 0) {
-            return '📊 暂无激活码\n\n使用 /new 生成第一个';
-        }
-        const total = codes.length;
+        if (codes.length === 0) return '📊 暂无激活码';
         const used = codes.filter(c => c.status === 'used').length;
-        const unused = total - used;
-
-        let list = codes.map(c => {
-            const status = c.status === 'unused' ? '🟢 未使用' : '🔴 已使用';
-            return `${c.code} → ${status}`;
-        }).join('\n');
-
-        return `📊 激活码列表 (${total} 个)\n\n${list}\n\n📈 统计: 未使用 ${unused} 个 | 已使用 ${used} 个`;
+        const unused = codes.length - used;
+        let list = codes.map(c => `${c.code} → ${c.status === 'unused' ? '🟢 未使用' : '🔴 已使用'}`).join('\n');
+        return `📊 激活码列表 (${codes.length} 个)\n\n${list}\n\n📈 未使用 ${unused} 个 | 已使用 ${used} 个`;
     }
 
-    // /del 激活码 - 删除激活码
     if (cmd === '/del') {
         const codeToDelete = parts[1];
-        if (!codeToDelete) {
-            return '❌ 请指定要删除的激活码\n用法: /del 激活码';
-        }
+        if (!codeToDelete) return '❌ 用法: /del 激活码';
         const existing = await getCodeFromDB(codeToDelete);
-        if (!existing) {
-            return `❌ 激活码 ${codeToDelete} 不存在`;
-        }
+        if (!existing) return `❌ 激活码 ${codeToDelete} 不存在`;
         await deleteCodeFromDB(codeToDelete);
-        return `✅ 已删除激活码: ${codeToDelete}`;
+        return `✅ 已删除: ${codeToDelete}`;
     }
 
-    // /stats - 统计信息
     if (cmd === '/stats') {
         const codes = await getAllCodesFromDB();
-        const total = codes.length;
         const used = codes.filter(c => c.status === 'used').length;
-        const unused = total - used;
-        return `📊 统计信息\n\n📦 总数: ${total} 个\n🟢 未使用: ${unused} 个\n🔴 已使用: ${used} 个`;
+        return `📊 总数: ${codes.length} 个\n🟢 未使用: ${codes.length - used} 个\n🔴 已使用: ${used} 个`;
     }
 
-    return `📋 可用命令:\n/new - 生成新激活码\n/list - 查看所有激活码\n/del 激活码 - 删除指定码\n/stats - 查看统计`;
+    return `📋 命令: /new /list /del /stats`;
 }
 
-// ============================================================
 // 验证激活码（网站调用）
-// ============================================================
 async function verifyCode(code, deviceId) {
     const record = await getCodeFromDB(code);
-    if (!record) {
-        return { success: false, error: '无效的激活码' };
-    }
-    if (record.status === 'used') {
-        return { success: false, error: '激活码已被使用' };
-    }
+    if (!record) return { success: false, error: '无效的激活码' };
+    if (record.status === 'used') return { success: false, error: '激活码已被使用' };
     await markCodeUsed(code, deviceId);
     return { success: true };
 }
 
-// ============================================================
-// 主处理函数（Railway 入口）
-// ============================================================
+// 主处理函数
 module.exports = async function(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -174,15 +138,12 @@ module.exports = async function(req, res) {
         return res.status(200).end();
     }
 
-    // ============================================================
-    // 处理 TG Webhook（TG 命令）
-    // ============================================================
+    // TG Webhook
     if (req.method === 'POST' && req.url === '/webhook') {
         try {
             const body = req.body;
             const text = body.message?.text;
             const chatId = body.message?.chat?.id;
-
             if (text && chatId) {
                 const reply = await handleTGCommand(text, chatId);
                 await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(reply)}`, {
@@ -195,26 +156,20 @@ module.exports = async function(req, res) {
         }
     }
 
-    // ============================================================
-    // 处理网站验证请求
-    // ============================================================
+    // 网站验证
     if (req.method === 'POST' && req.url === '/api/proxy') {
         const { code, deviceId } = req.body || {};
         if (!code) {
             return res.status(400).json({ error: '缺少激活码' });
         }
-
         const result = await verifyCode(code, deviceId);
-
         if (result.success) {
             try {
-                const msg = `✅ 激活码已使用\n\n📌 激活码: ${code}\n📱 设备ID: ${deviceId || '未知'}\n⏰ 时间: ${new Date().toLocaleString()}`;
-                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${ADMIN_ID}&text=${encodeURIComponent(msg)}`, {
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${ADMIN_ID}&text=${encodeURIComponent('✅ 激活码已使用: ' + code)}`, {
                     method: 'GET'
                 });
             } catch (e) {}
         }
-
         return res.status(200).json(result);
     }
 
